@@ -2,47 +2,17 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Mini FPS móvil</title>
+<title>Mini FPS Móvil</title>
 <style>
-  body { margin: 0; overflow: hidden; touch-action: none; }
-  canvas { display: block; }
+  body { margin:0; overflow:hidden; touch-action:none; }
+  canvas { display:block; }
 
   /* Joystick izquierdo */
-  #joystick {
-    position: fixed;
-    bottom: 50px;
-    left: 50px;
-    width: 100px;
-    height: 100px;
-    background: rgba(200,200,200,0.5);
-    border-radius: 50%;
-  }
-  #stick {
-    position: absolute;
-    width: 50px;
-    height: 50px;
-    background: rgba(100,100,100,0.8);
-    border-radius: 50%;
-    top: 25px;
-    left: 25px;
-  }
+  #joystick { position:fixed; bottom:50px; left:50px; width:100px; height:100px; background:rgba(200,200,200,0.5); border-radius:50%; }
+  #stick { position:absolute; width:50px; height:50px; background:rgba(100,100,100,0.8); border-radius:50%; top:25px; left:25px; }
 
   /* Botón disparo */
-  #shoot {
-    position: fixed;
-    bottom: 50px;
-    right: 50px;
-    width: 80px;
-    height: 80px;
-    background: rgba(255,0,0,0.7);
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    font-size: 20px;
-    font-weight: bold;
-  }
+  #shoot { position:fixed; bottom:50px; right:50px; width:80px; height:80px; background:rgba(255,0,0,0.7); border-radius:50%; display:flex; justify-content:center; align-items:center; color:white; font-size:20px; font-weight:bold; }
 </style>
 </head>
 <body>
@@ -53,121 +23,122 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.min.js"></script>
 
 <script>
-  // --- Escena y cámara ---
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb);
+// --- Escena ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
 
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 100);
-  camera.position.set(0, 2, 5);
+// --- Cámara FPS ---
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 100);
+camera.position.set(0,1.6,0); // ojos del jugador
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Luz
+const light = new THREE.DirectionalLight(0xffffff,1);
+light.position.set(10,10,10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0x404040));
+
+// Piso
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(50,50),
+  new THREE.MeshStandardMaterial({color:0x228B22})
+);
+floor.rotation.x = -Math.PI/2;
+scene.add(floor);
+
+// --- Brazos del jugador ---
+const arms = new THREE.Group();
+const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.2,0.5,0.2), new THREE.MeshStandardMaterial({color:0xffaa00}));
+leftArm.position.set(-0.25,-0.3,-0.5);
+arms.add(leftArm);
+
+const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.2,0.5,0.2), new THREE.MeshStandardMaterial({color:0xffaa00}));
+rightArm.position.set(0.25,-0.3,-0.5);
+arms.add(rightArm);
+
+// Arma
+const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.5), new THREE.MeshStandardMaterial({color:0x333333}));
+gun.position.set(0,-0.25,-0.8);
+arms.add(gun);
+
+// Agregar brazos a la cámara para FPS
+camera.add(arms);
+scene.add(camera);
+
+// --- Enemigo ---
+const enemy = new THREE.Mesh(
+  new THREE.BoxGeometry(0.5,1.5,0.5),
+  new THREE.MeshStandardMaterial({color:0x0000ff})
+);
+enemy.position.set(5,0.75,0);
+scene.add(enemy);
+
+// --- Joystick movimiento ---
+let moveX=0, moveZ=0, speed=0.05;
+const joystick = document.getElementById('joystick');
+const stick = document.getElementById('stick');
+let dragging=false, startX, startY;
+
+joystick.addEventListener('pointerdown', e => { dragging=true; startX=e.clientX; startY=e.clientY; });
+window.addEventListener('pointermove', e => {
+  if(!dragging) return;
+  let dx=e.clientX-startX, dy=e.clientY-startY;
+  const max=40;
+  dx=Math.max(-max, Math.min(max, dx));
+  dy=Math.max(-max, Math.min(max, dy));
+  stick.style.transform=`translate(${dx}px,${dy}px)`;
+  moveX = dx/max;
+  moveZ = -dy/max;
+});
+window.addEventListener('pointerup', e => { dragging=false; stick.style.transform=`translate(0px,0px)`; moveX=0; moveZ=0; });
+
+// --- Controlar cámara con toque derecho (mirar) ---
+let lookActive=false, lastX, lastY;
+document.body.addEventListener('pointerdown', e => {
+  if(e.clientX>window.innerWidth/2) { lookActive=true; lastX=e.clientX; lastY=e.clientY; }
+});
+document.body.addEventListener('pointermove', e => {
+  if(!lookActive) return;
+  const dx = (e.clientX-lastX)*0.002;
+  const dy = (e.clientY-lastY)*0.002;
+  camera.rotation.y -= dx;
+  camera.rotation.x -= dy;
+  camera.rotation.x=Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+  lastX=e.clientX; lastY=e.clientY;
+});
+document.body.addEventListener('pointerup', e => { lookActive=false; });
+
+// --- Disparo ---
+document.getElementById('shoot').addEventListener('pointerdown', () => {
+  const dir = new THREE.Vector3(0,0,-1);
+  dir.applyEuler(camera.rotation);
+  const raycaster = new THREE.Raycaster(camera.getWorldPosition(new THREE.Vector3()), dir);
+  const intersects = raycaster.intersectObject(enemy);
+  if(intersects.length>0) enemy.material.color.set(0xff0000);
+});
+
+// --- Animación ---
+function animate(){
+  requestAnimationFrame(animate);
+
+  // Movimiento relativo a la cámara
+  const forward = new THREE.Vector3(0,0,-1).applyEuler(camera.rotation).setY(0).normalize();
+  const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), forward).normalize();
+  camera.position.add(forward.multiplyScalar(moveZ*speed));
+  camera.position.add(right.multiplyScalar(moveX*speed));
+
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
-
-  // --- Luz ---
-  const light = new THREE.DirectionalLight(0xffffff, 1);
-  light.position.set(10,10,10);
-  scene.add(light);
-  scene.add(new THREE.AmbientLight(0x404040));
-
-  // --- Piso ---
-  const floorGeo = new THREE.PlaneGeometry(50,50);
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x228B22 });
-  const floor = new THREE.Mesh(floorGeo, floorMat);
-  floor.rotation.x = -Math.PI/2;
-  scene.add(floor);
-
-  // --- Personaje ---
-  const personaje = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.5,1.5,0.5),
-    new THREE.MeshStandardMaterial({ color: 0xff0000 })
-  );
-  body.position.y = 0.75;
-  personaje.add(body);
-  scene.add(personaje);
-
-  // --- Enemigo ---
-  const enemy = new THREE.Mesh(
-    new THREE.BoxGeometry(0.5,1.5,0.5),
-    new THREE.MeshStandardMaterial({ color: 0x0000ff })
-  );
-  enemy.position.set(5,0.75,0);
-  scene.add(enemy);
-
-  // --- Movimiento ---
-  let moveX = 0;
-  let moveZ = 0;
-  const speed = 0.1;
-
-  const joystick = document.getElementById('joystick');
-  const stick = document.getElementById('stick');
-  let dragging = false;
-  let startX, startY;
-
-  joystick.addEventListener('pointerdown', e => {
-    dragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-  });
-
-  window.addEventListener('pointermove', e => {
-    if(!dragging) return;
-    let dx = e.clientX - startX;
-    let dy = e.clientY - startY;
-
-    const max = 40;
-    dx = Math.max(-max, Math.min(max, dx));
-    dy = Math.max(-max, Math.min(max, dy));
-
-    stick.style.transform = `translate(${dx}px, ${dy}px)`;
-
-    moveX = dx / max;
-    moveZ = -dy / max;
-  });
-
-  window.addEventListener('pointerup', e => {
-    dragging = false;
-    stick.style.transform = `translate(0px,0px)`;
-    moveX = 0;
-    moveZ = 0;
-  });
-
-  // --- Disparo ---
-  document.getElementById('shoot').addEventListener('pointerdown', () => {
-    const dir = new THREE.Vector3(0,0,-1); // disparo hacia adelante
-    dir.applyEuler(camera.rotation);
-    const raycaster = new THREE.Raycaster(camera.position, dir);
-    const intersects = raycaster.intersectObject(enemy);
-    if(intersects.length>0) enemy.material.color.set(0xff0000);
-  });
-
-  // --- Animación ---
-  function animate(){
-    requestAnimationFrame(animate);
-
-    // Movimiento personaje
-    personaje.position.x += moveX * speed;
-    personaje.position.z += moveZ * speed;
-
-    // Cámara detrás del personaje
-    camera.position.set(
-      personaje.position.x,
-      personaje.position.y + 1.0,
-      personaje.position.z + 5
-    );
-    camera.lookAt(personaje.position.x, personaje.position.y + 1, personaje.position.z);
-
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+});
 </script>
-
 </body>
 </html>
