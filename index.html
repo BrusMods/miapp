@@ -2,17 +2,17 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Mini FPS Horizontal</title>
+<title>Mini FPS Móvil Mejorado</title>
 <style>
   html, body { margin:0; padding:0; overflow:hidden; height:100%; width:100%; touch-action:none; }
   canvas { display:block; }
 
   /* Joystick izquierda */
-  #joystick { position: fixed; bottom: 20%; left: 5%; width: 100px; height: 100px; background: rgba(200,200,200,0.5); border-radius: 50%; }
-  #stick { position: absolute; width:50px; height:50px; background: rgba(100,100,100,0.8); border-radius:50%; top:25px; left:25px; }
+  #joystick { position: fixed; bottom: 15%; left: 5%; width: 100px; height: 100px; background: rgba(200,200,200,0.5); border-radius:50%; }
+  #stick { position:absolute; width:50px; height:50px; background: rgba(100,100,100,0.8); border-radius:50%; top:25px; left:25px; }
 
   /* Botón disparo derecha */
-  #shoot { position: fixed; bottom: 20%; right: 5%; width: 80px; height: 80px; background: rgba(255,0,0,0.7); border-radius:50%; display:flex; justify-content:center; align-items:center; color:white; font-size:20px; font-weight:bold; }
+  #shoot { position: fixed; bottom: 15%; right: 5%; width: 80px; height: 80px; background: rgba(255,0,0,0.7); border-radius:50%; display:flex; justify-content:center; align-items:center; color:white; font-size:20px; font-weight:bold; }
 </style>
 </head>
 <body>
@@ -43,58 +43,62 @@ scene.add(light);
 scene.add(new THREE.AmbientLight(0x404040));
 
 // Piso
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(50,50),
-  new THREE.MeshStandardMaterial({color:0x228B22})
-);
-floor.rotation.x = -Math.PI/2;
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(50,50), new THREE.MeshStandardMaterial({color:0x228B22}));
+floor.rotation.x=-Math.PI/2;
 scene.add(floor);
 
-// Brazos y arma
+// --- Brazos y arma ---
 const arms = new THREE.Group();
-const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.2,0.5,0.2), new THREE.MeshStandardMaterial({color:0xffaa00}));
-leftArm.position.set(-0.25,-0.3,-0.5);
+
+// Brazo izquierdo
+const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.5), new THREE.MeshStandardMaterial({color:0xffaa00}));
+leftArm.rotation.z = Math.PI/8;
+leftArm.position.set(-0.25,-0.3,-0.4);
 arms.add(leftArm);
 
-const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.2,0.5,0.2), new THREE.MeshStandardMaterial({color:0xffaa00}));
-rightArm.position.set(0.25,-0.3,-0.5);
+// Brazo derecho
+const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.5), new THREE.MeshStandardMaterial({color:0xffaa00}));
+rightArm.rotation.z = -Math.PI/8;
+rightArm.position.set(0.25,-0.3,-0.4);
 arms.add(rightArm);
 
+// Arma (pistola simple)
 const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.5), new THREE.MeshStandardMaterial({color:0x333333}));
 gun.position.set(0,-0.25,-0.8);
 arms.add(gun);
 
+// Agregar brazos a la cámara (FPS)
 camera.add(arms);
 scene.add(camera);
 
-// Enemigo
+// --- Enemigo ---
 const enemy = new THREE.Mesh(new THREE.BoxGeometry(0.5,1.5,0.5), new THREE.MeshStandardMaterial({color:0x0000ff}));
 enemy.position.set(5,0.75,0);
 scene.add(enemy);
 
-// Joystick
+// --- Movimiento joystick ---
 let moveX=0, moveZ=0, speed=0.05;
-const joystick = document.getElementById('joystick');
-const stick = document.getElementById('stick');
-let dragging=false, startX, startY;
+const joystick=document.getElementById('joystick');
+const stick=document.getElementById('stick');
+let dragging=false,startX,startY;
 
 joystick.addEventListener('pointerdown', e => { dragging=true; startX=e.clientX; startY=e.clientY; });
-window.addEventListener('pointermove', e => {
+window.addEventListener('pointermove', e=>{
   if(!dragging) return;
-  let dx = e.clientX-startX, dy=e.clientY-startY;
+  let dx=e.clientX-startX, dy=e.clientY-startY;
   const max=40;
   dx=Math.max(-max,Math.min(max,dx));
   dy=Math.max(-max,Math.min(max,dy));
-  stick.style.transform = `translate(${dx}px,${dy}px)`;
-  moveX = dx/max;
-  moveZ = -dy/max;
+  stick.style.transform=`translate(${dx}px,${dy}px)`;
+  moveX=dx/max;
+  moveZ=-dy/max;
 });
-window.addEventListener('pointerup', e => { dragging=false; stick.style.transform=`translate(0px,0px)`; moveX=0; moveZ=0; });
+window.addEventListener('pointerup', e=>{ dragging=false; stick.style.transform=`translate(0px,0px)`; moveX=0; moveZ=0; });
 
-// Mirar cámara lado derecho
+// --- Mirar cámara lado derecho ---
 let lookActive=false, lastX, lastY;
 document.body.addEventListener('pointerdown', e => { if(e.clientX>window.innerWidth/2) { lookActive=true; lastX=e.clientX; lastY=e.clientY; } });
-document.body.addEventListener('pointermove', e => {
+document.body.addEventListener('pointermove', e=>{
   if(!lookActive) return;
   const dx=(e.clientX-lastX)*0.002;
   const dy=(e.clientY-lastY)*0.002;
@@ -105,27 +109,40 @@ document.body.addEventListener('pointermove', e => {
 });
 document.body.addEventListener('pointerup', e=>{lookActive=false;});
 
-// Disparo
+// --- Disparo ---
 document.getElementById('shoot').addEventListener('pointerdown',()=>{
-  const dir=new THREE.Vector3(0,0,-1);
-  dir.applyEuler(camera.rotation);
-  const raycaster = new THREE.Raycaster(camera.getWorldPosition(new THREE.Vector3()), dir);
+  // Rayo desde cámara
+  const origin = new THREE.Vector3();
+  camera.getWorldPosition(origin);
+  const dir = new THREE.Vector3(0,0,-1).applyEuler(camera.rotation);
+  const raycaster = new THREE.Raycaster(origin, dir);
   const intersects = raycaster.intersectObject(enemy);
+  
+  // Efecto visual del disparo (rayo)
+  const geometry = new THREE.BufferGeometry().setFromPoints([origin, origin.clone().add(dir.clone().multiplyScalar(10))]);
+  const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({color:0xff0000}));
+  scene.add(line);
+  setTimeout(()=>scene.remove(line),100);
+
+  // Colisión con enemigo
   if(intersects.length>0) enemy.material.color.set(0xff0000);
 });
 
-// Animación
+// --- Animación ---
 function animate(){
   requestAnimationFrame(animate);
+
+  // Mover personaje relativo a cámara
   const forward = new THREE.Vector3(0,0,-1).applyEuler(camera.rotation).setY(0).normalize();
   const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), forward).normalize();
   camera.position.add(forward.multiplyScalar(moveZ*speed));
   camera.position.add(right.multiplyScalar(moveX*speed));
+
   renderer.render(scene,camera);
 }
 animate();
 
-// Ajuste de pantalla horizontal
+// Ajuste pantalla
 window.addEventListener('resize',()=>{
   camera.aspect=window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
