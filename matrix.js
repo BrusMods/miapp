@@ -69,7 +69,7 @@ class Matrix {
 		this.valor = arregloNumero[Math.floor(Math.random() * (arregloNumero.length - 1))].toUpperCase()
 		this.velocidad = Math.random() * fontSize * 3 / 4 + fontSize * 3 / 4
 
-		ctx.fillStyle = "rgba(0,255,0)"
+		ctx.fillStyle = "rgba(255,0,0)"
 		ctx.font = fontSize + "px san-serif"
 		ctx.fillText(this.valor, this.x, this.y)
 
